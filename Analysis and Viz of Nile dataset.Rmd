@@ -1,5 +1,5 @@
 ---
-title: "Analysis of the Nile Dataset"
+title: "Analysis and Data Visualiztion of the Nile Dataset"
 author: "Dipti Bhattad"
 date: "February 11, 2019"
 output:
