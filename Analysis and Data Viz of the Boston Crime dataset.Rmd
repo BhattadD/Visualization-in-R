@@ -1,6 +1,6 @@
 ---
 title: "Project 1: Boston Crime Data Analysis and Visualization"
-author: "Dipti Bhattad & Shruthi Subbaiah Machimada"
+author: "Dipti Bhattad"
 date: "February 19, 2019"
 output: word_document
 ---
