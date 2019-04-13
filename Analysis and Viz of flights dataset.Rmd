@@ -1,0 +1,146 @@
+---
+title: "Analysis and Visualization of flights dataset"
+author: "Dipti Bhattad"
+date: "February 11, 2019"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+Data source: (https://www.kaggle.com/usdot/flight-delays)
+File used: "???ights.csv"
+
+```{r}
+flights <- read.csv("~/Desktop/flights.csv", stringsAsFactors=FALSE)
+library('dplyr')
+```
+
+
+Calculate the number of ???ights that did not depart late from the origin but arrived late at the destination
+```{r}
+flights_late_arrival<-filter(flights,flights$DEPARTURE_DELAY<=0 & flights$ARRIVAL_DELAY>0)
+count(flights_late_arrival)
+```
+
+
+Calculate the number of ???ights that departed late from the origin but arrived early at the destination
+```{r}
+flights_early_arr<-filter(flights,flights$DEPARTURE_DELAY>0 & flights$ARRIVAL_DELAY<0)
+count(flights_early_arr)
+```
+
+
+How will you analyze the distribution of time delay in case of departure? How will you compute the mean time delay in case of departure? Plot a histogram of time delay in case of departure
+
+To compute the time delay, we need records where departure delay > 0 since departure delay < 0 means that the flight has departed early (there is no delay). Also, departure delay > 200 can be considered as outliers and hence removed from consideration for this problem
+
+```{r}
+flights_departure_delay<-filter(flights,flights$DEPARTURE_DELAY >0 & flights$DEPARTURE_DELAY <=200)
+summarize(flights_departure_delay,mean_dep_delay=mean(flights_departure_delay$DEPARTURE_DELAY))
+```
+
+Histogram of departure delay-
+```{r}
+ggplot(flights_departure_delay, aes(x = flights_departure_delay$DEPARTURE_DELAY)) +
+        geom_histogram(color = "blue",binwidth = 2, fill = "white") + xlab("Departure Delay in Minutes") + ggtitle("Histogram of Departure Delay") + theme_bw()
+```
+
+
+If one needs to analyze the distribution of time delay in case of departure for each airline, which option would you use and why?Generate a plot for the answer you opted
+
+a) Combine all histograms in one plot 
+
+```{r}
+ggplot(flights_departure_delay,
+       aes(x=flights_departure_delay$DEPARTURE_DELAY,color=flights_departure_delay$AIRLINE,fill=flights_departure_delay$AIRLINE))+
+  geom_histogram(binwidth=30)+theme_bw() + xlab("Departure delay times") + ggtitle("Histogram")
+```
+A single Histogram for all airlines is not at all helpful in understanding the distribution of the departure delays for each airline and hence should not be used.
+
+
+b) Violin plot
+```{r}
+ggplot(flights_departure_delay,aes(y=flights_departure_delay$DEPARTURE_DELAY,x=flights_departure_delay$AIRLINE,
+                                   color=flights_departure_delay$AIRLINE))+
+  geom_violin(trim=FALSE) + xlab("Airlines") +ylab("Departure delay times")+ ggtitle('Violin plot')
+```
+Violin Plots for departure delays for each airline helps us understand that the data distribution is similar for each airline, but still it is not very helpful visiually
+
+
+c) Histograms for each airline, using grids
+```{r}
+library(ggplot2)
+ggplot(flights_departure_delay,aes(x=flights_departure_delay$DEPARTURE_DELAY)) + facet_wrap(flights_departure_delay$AIRLINE~., nrow = 3) + geom_histogram(binwidth = 20) + ggtitle("Grid Plot") + xlab("Departure Delays")
+```
+Using a grid to display different histograms for each airline would be the best way to visualise it because the distributions are similar
+so they would not overlap in a single graph and small differences can be observed.
+
+
+Plot a scatter plot comparing time delay in departure and time delay in arrival. Use ???rst 100,000 values of the dataset. Interpret the scatter plot and write your observations.
+
+```{r}
+flights_sub <- flights[1:100000,]
+ggplot(data = flights_sub) + geom_point(mapping = aes(x=DEPARTURE_DELAY, y=ARRIVAL_DELAY), size = 0.5) + scale_x_continuous(breaks = seq(-65,1500,200)) + scale_y_continuous(breaks = seq(-65,1500,200)) + ggtitle("Scatterplot of Arrival delay v/s Departure delay")
+```
+The scatterplot shows that there is a linear relationship between departure delay and arrival delay. If the flight departs late, it arrives late and similarly if it departs early, it arrives early. Also, most of the delays are between -65 and 400 mins.
+
+
+Compute the total number of airline delay and late aircraft delay for each airline and compare them using bar or column plot
+
+```{r}
+df1<-filter(flights,AIRLINE_DELAY > 0) %>% group_by(AIRLINE) %>% count()
+df2<-filter(flights,LATE_AIRCRAFT_DELAY > 0) %>% group_by(AIRLINE) %>% count()
+df1['late_aircraft_delay']<-df2['n']
+colnames(df1) <- c("AIRLINE", "airline_delay","late_aircraft_delay")
+#df1
+```
+
+
+```{r}
+library(tidyr)
+
+ggplot(data = df1 %>% gather(delayType, delay, - AIRLINE), 
+       aes(x = AIRLINE, y = delay, fill = delayType)) + 
+    geom_bar(stat = 'identity', position = 'dodge')
+```
+
+
+Generate 3 heatmaps with x-axis representing top 10 origin airports, y-axis representing all the airlines and ???ll using total number of security delay, air system delay, and weather delay. For calculation of top 10 airports use dplyr::count(df$ORIGIN AIRPORT) and arrange in descending order. From the sorted data select top 10 airports
+
+Finding the top 10 airports
+```{r}
+top_airports<-flights %>% count(ORIGIN_AIRPORT) %>% arrange(desc(n)) %>% top_n(10)
+top_airports
+```
+
+```{r}
+flights_airports<-filter(flights,flights$ORIGIN_AIRPORT %in% top_airports$ORIGIN_AIRPORT)
+#flights_airports
+```
+
+```{r}
+df_delay<-filter(flights_airports,SECURITY_DELAY > 0) %>% group_by(AIRLINE,ORIGIN_AIRPORT) %>% count()
+df_airsystemdelay<-filter(flights_airports,AIR_SYSTEM_DELAY > 0) %>% group_by(AIRLINE,ORIGIN_AIRPORT) %>% count()
+df_weatherdelay<-filter(flights_airports,WEATHER_DELAY > 0) %>% group_by(AIRLINE,ORIGIN_AIRPORT) %>% count()
+df_delay['airsystem']<-df_airsystemdelay['n']
+df_delay['weatherdelay']<-df_weatherdelay['n']
+colnames(df_delay)<-c("AIRLINE","ORIGIN_AIRPORT","securitydelay","airsystemdelay","weatherdelay")
+#df_delay
+```
+
+```{r}
+p1<-ggplot(data =df_delay, aes(x = ORIGIN_AIRPORT, y = AIRLINE)) +
+  geom_tile(aes(fill=securitydelay)) +xlab('airports') +ylab('Airline')
+
+p2<-ggplot(data =df_delay, aes(x = ORIGIN_AIRPORT, y = AIRLINE)) +
+  geom_tile(aes(fill=airsystemdelay))+xlab('airports') +ylab('Airline')
+
+p3<-ggplot(data =df_delay, aes(x = ORIGIN_AIRPORT, y = AIRLINE)) +
+  geom_tile(aes(fill=weatherdelay)) +xlab('airports') +ylab('Airline')
+
+library("gridExtra")
+grid.arrange(p1,p2,p3)
+```
+
+
