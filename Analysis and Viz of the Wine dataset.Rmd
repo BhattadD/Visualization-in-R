@@ -1,0 +1,95 @@
+---
+title: "Analysis and Data Visualization of Wine dataset"
+author: "Dipti Bhattad"
+date: "March 8, 2019"
+output: html_document
+---
+
+### Reading the csv file
+```{r}
+wine_df <- read.csv("~/Desktop/winemag-data_first150k.csv")
+```
+
+### Loading the library and checking for null values
+```{r}
+library(tidyverse)
+### check for Price null values
+which(is.na(wine_df$price))
+min(wine_df$price, na.rm=TRUE)
+max(wine_df$price, na.rm=TRUE)
+
+### check for Points null values
+which(is.na(wine_df$points))
+min(wine_df$points)
+max(wine_df$points)
+```
+There are many rows with null values for price. However, not removing these null values as histogram automatically removes the null values.
+
+There are no null values for points.
+
+
+### Histogram of Price
+```{r}
+ggplot(data = wine_df) +
+  geom_histogram(mapping = aes(x = price), fill = "light green", color = "dark green", alpha = .5, binwidth = 50) + xlab("Price") + ggtitle("Histogram of Price") + theme_classic()
+```
+
+### Histogram of Points
+```{r}
+ggplot(data = wine_df) +
+  geom_histogram(mapping = aes(x = points), fill = "light pink", color = "tomato", alpha = .5, binwidth = 1) + xlab("Points") + ggtitle("Histogram of Points") + theme_classic()
+```
+
+### Create a new dataframe
+```{r}
+new_df <- summarise(group_by(wine_df,country,variety), avg_val_of_points = mean(points), avg_val_of_price = mean(price,na.rm=TRUE))
+```
+
+### Arrange the above dataframe in descending order of points. 
+### Plot heatmap considering ???rst 10 values of the arranged dataframe. The x axis of heat map should have countries, y axis should have variety, and the heat map should be ???lled with values of average points 
+
+Arranging the above dataframe in descending order of points and taking the first 10 records
+```{r}
+top_10_wines<- new_df %>% arrange(desc(new_df$avg_val_of_points)) %>% head(10)
+```
+
+Plotting the heatmap of the above dataframe
+```{r}
+ggplot(data = top_10_wines) + geom_tile(aes(x=country,y=variety, fill=avg_val_of_points)) + scale_fill_gradient2(low = "light green", mid = "orange", high = "red", midpoint = 94.5) + ggtitle("Heatmap of Varieties vs Countries based on avg points") + xlab("Countries") + ylab("Varieties") + theme_bw()
+```
+
+
+###  Compute the Pearson correlation coe???cient. Plot a scatter plot with average points on x axis and average price on y axis. Fit a linear model and compute the values of slope and intercept
+
+Pearson correlation coeffecient
+```{r}
+cor(new_df$avg_val_of_points, new_df$avg_val_of_price, use = "complete.obs")
+```
+The Pearson correlation coeffecient is 0.49 which is NOT very high and hence does not indicate a strong relationship between average value of points and average value of price
+
+
+Scatter plot of average value of price vs average value of points
+```{r}
+ggplot(data = new_df, mapping = aes(x = avg_val_of_points, y = avg_val_of_price)) + geom_point() + geom_smooth(method = "lm") + ggtitle("Scatter plot of avg price vs avg points") + theme_bw()
+```
+The Scatter plot also indicate that there is no strong relationship between average value of points and average value of price
+
+
+Fitting a linear model
+```{r}
+linear_model <- lm(formula = avg_val_of_price ~ avg_val_of_points, data = new_df)
+summary(linear_model)
+```
+Value of Intercept : -290.3801
+Value of Slope: 3.6309
+
+
+### Does a winery o???ering more variety of wines attract more points on average? Is there a trend between variety and average points?
+
+```{r}
+winery_df <- summarise(group_by(wine_df,winery), average_points = mean(points), total_varieties = n_distinct(variety))
+
+ggplot(data = winery_df, mapping = aes(x = total_varieties, y = average_points)) + geom_point() + geom_smooth(method = "lm") + theme_bw() + ggtitle("Scatter plot of avg points vs total varieties for each winery")
+```
+No, the winery offering more varieties of wines do not attract more average points.
+As seen from the above plot, there is no trend between variety and average points.

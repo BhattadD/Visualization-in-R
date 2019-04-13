@@ -1,0 +1,73 @@
+---
+title: "Network Visualization"
+author: "Dipti Bhattad"
+date: "March 8, 2019"
+output: html_document
+---
+
+### Loading the libraries
+```{r}
+library(ggplot2)
+library(igraph)
+library(dplyr)
+```
+
+### Reading the edges file and creating a nodes dataframe
+```{r}
+links <- read.csv("~/Desktop/edgelist.csv", header=T, as.is=T)
+links <- links[,2:3]
+nodes <- sort(unique(links$to))
+nodes <- as.data.frame(nodes)
+net <- graph_from_data_frame(d=links, vertices=nodes, directed = TRUE)
+net <- simplify(net, remove.multiple = TRUE, remove.loops = TRUE)
+```
+
+
+### Create an adjacency matrix
+```{r}
+adj_matrix <- as_adjacency_matrix(net, type = "both")
+adj_matrix
+```
+
+
+### Create a network using the adjacency matrix
+```{r}
+net1<-graph_from_adjacency_matrix(adj_matrix,mode="undirected", diag = F)
+#net1
+plot(net1, edge.color="gray80",
+     vertex.color="gold", vertex.frame.color="black", vertex.label.color="black", vertex.size = 25)
+```
+
+
+### Add a node (vertex) attribute and name it as type. Assign value A to nodes S01 to s08, value B to nodes S09 to s14, and value C to nodes S15 to s17. Plot the network showing all node labels and color node by type attribute
+
+Creating a type attribute
+```{r}
+net1<-set.vertex.attribute(net, "type", value=c(rep(LETTERS[1], times = 8),rep(LETTERS[2], times = 6), rep(LETTERS[3], times = 3)))
+V(net1)$type
+```
+
+Plotting the network
+```{r}
+V(net1)$color <- ifelse(V(net1)$type == "A", "tomato", ifelse(V(net1)$type=="B", "Green", "Gold"))
+
+plot(net1, edge.color="gray80", vertex.frame.color="black", vertex.label.color="black", vertex.size = 25,vertex.color= V(net1)$color)
+```
+
+
+### Plot the network showing all nodes such that the node sizes are varied according their respective degrees
+
+```{r}
+colrs <- c("green", "pink", "yellow")
+
+deg <- degree(net1, mode="all")
+V(net1)$size <- deg*4
+
+E(net1)$width <- E(net1)$weight/2
+E(net1)$arrow.size <- .3
+E(net1)$edge.color <- "gray"
+
+graph_attr(net1, "layout") <- layout_with_lgl
+plot(net1, edge.color="gray80", vertex.frame.color="black", vertex.label.color="black",vertex.color= colrs) 
+```
+
